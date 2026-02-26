@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 """
 Start up a virtual network topology for CS640
@@ -12,6 +12,7 @@ from mininet.topo import Topo
 from mininet.util import quietRun, ipParse, ipStr
 
 import sys
+import string
 
 IPCONFIG_FILE = "./ip_config"
 ARPCACHE_FILE = "./arp_cache"
@@ -38,8 +39,8 @@ class VNetHost:
     def starthttp(self):
         "Start simple Python web server on hosts"
         info( '*** Starting SimpleHTTPServer on host', self.host, '\n' )
-        self.host.cmd('cd ./http_server/; nohup python3 ./webserver.py &')
-#self.host.cmd( 'cd ./http_%s/; nohup python3 ./webserver.py &' % (self.host.name) )
+        self.host.cmd('cd ./http_server/; nohup python2.7 ./webserver.py &')
+#self.host.cmd( 'cd ./http_%s/; nohup python2.7 ./webserver.py &' % (self.host.name) )
 
     def configureRoute(self, host):
         info( '*** Configuring routing for %s\n' % host)
@@ -188,7 +189,7 @@ class VNetTopo(Topo):
                     f.write('%s %s\n' % (iface.ip, iface.mac))
                     arpcache[iface.ip] = iface.mac
                 for vrouter in self.vrouters.values():
-                    ifaces = list(vrouter.switch.intfs.values())
+                    ifaces = vrouter.switch.intfs.values()
                     for i in range(1,len(ifaces)):
                         mac = ifaces[i].mac
                         ip = vrouter.ips[i-1]
@@ -316,7 +317,7 @@ def dijkstra(graph, initial):
 if __name__ == '__main__':
     setLogLevel( 'info' )
     if (len(sys.argv) < 2):
-        print(sys.argv)
+        print sys.argv
         sys.exit("%s <topofile> [-a]" % (sys.argv[0]))
     topofile = sys.argv[1]
     staticarp = False
