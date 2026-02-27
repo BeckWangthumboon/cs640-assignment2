@@ -144,7 +144,10 @@ public class Router extends Device
 			return;
 		}
 
-		etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
+		MACAddress outIfaceMac = resolveIfaceMac(outIface);
+		if (null == outIfaceMac)
+		{ return; }
+		etherPacket.setSourceMACAddress(outIfaceMac.toBytes());
 		etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
 		this.sendPacket(etherPacket, outIface);
 		
@@ -164,10 +167,13 @@ public class Router extends Device
 		Iface targetIface = getLocalIfaceByIp(targetIp);
 		if (null == targetIface)
 		{ return; }
+		MACAddress targetIfaceMac = resolveIfaceMac(targetIface);
+		if (null == targetIfaceMac)
+		{ return; }
 
 		Ethernet ether = new Ethernet();
 		ether.setEtherType(Ethernet.TYPE_ARP);
-		ether.setSourceMACAddress(targetIface.getMacAddress().toBytes());
+		ether.setSourceMACAddress(targetIfaceMac.toBytes());
 		ether.setDestinationMACAddress(arpPacket.getSenderHardwareAddress());
 
 		ARP arpReply = new ARP();
@@ -176,7 +182,7 @@ public class Router extends Device
 				.setHardwareAddressLength((byte) Ethernet.DATALAYER_ADDRESS_LENGTH)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(targetIface.getMacAddress().toBytes())
+				.setSenderHardwareAddress(targetIfaceMac.toBytes())
 				.setSenderProtocolAddress(targetIface.getIpAddress())
 				.setTargetHardwareAddress(arpPacket.getSenderHardwareAddress())
 				.setTargetProtocolAddress(senderIp);
@@ -207,10 +213,13 @@ public class Router extends Device
 	{
 		IPv4 reqIp = (IPv4) requestEther.getPayload();
 		ICMP reqIcmp = (ICMP) reqIp.getPayload();
+		MACAddress localIfaceMac = resolveIfaceMac(localIface);
+		if (null == localIfaceMac)
+		{ return; }
 
 		Ethernet ether = new Ethernet();
 		ether.setEtherType(Ethernet.TYPE_IPv4);
-		ether.setSourceMACAddress(localIface.getMacAddress().toBytes());
+		ether.setSourceMACAddress(localIfaceMac.toBytes());
 		ether.setDestinationMACAddress(requestEther.getSourceMACAddress());
 
 		IPv4 ip = new IPv4();
@@ -245,10 +254,13 @@ public class Router extends Device
 		ArpEntry arpEntry = this.arpCache.lookup(nextHopIp);
 		if (null == arpEntry)
 		{ return; }
+		MACAddress outIfaceMac = resolveIfaceMac(outIface);
+		if (null == outIfaceMac)
+		{ return; }
 
 		Ethernet ether = new Ethernet();
 		ether.setEtherType(Ethernet.TYPE_IPv4)
-				.setSourceMACAddress(outIface.getMacAddress().toBytes())
+				.setSourceMACAddress(outIfaceMac.toBytes())
 				.setDestinationMACAddress(arpEntry.getMac().toBytes());
 
 		IPv4 ip = new IPv4();
@@ -291,5 +303,24 @@ public class Router extends Device
 		short computed = ipPacket.getChecksum();
 		ipPacket.setChecksum(original);
 		return original == computed;
+	}
+
+	private MACAddress resolveIfaceMac(Iface iface)
+	{
+		if (null == iface)
+		{ return null; }
+
+		MACAddress mac = iface.getMacAddress();
+		if (null != mac)
+		{ return mac; }
+
+		int ifaceIp = iface.getIpAddress();
+		if (0 == ifaceIp)
+		{ return null; }
+
+		ArpEntry selfEntry = this.arpCache.lookup(ifaceIp);
+		if (null == selfEntry)
+		{ return null; }
+		return selfEntry.getMac();
 	}
 }
